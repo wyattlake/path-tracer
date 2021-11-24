@@ -1,7 +1,6 @@
-use path_tracer::{object::Sphere, scene::*};
-use std::io::Error;
+use path_tracer::{Result, Scene, Sphere};
 
-fn main() -> Result<(), Error> {
+fn main() -> Result<()> {
     let mut scene = Scene::new();
     let sphere = Sphere::new();
     let s2 = sphere.clone();
