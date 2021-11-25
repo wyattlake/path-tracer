@@ -1,3 +1,5 @@
 use std::fmt::Debug;
 
-pub trait Object: Debug {}
+use crate::Pack;
+
+pub trait Object: Debug + Pack {}
