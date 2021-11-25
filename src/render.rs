@@ -85,7 +85,6 @@ impl<'a> Renderer<'a> {
         let len = self.dims.0 * self.dims.1;
         let mut res = vec![0f32; len * 3];
         self.color_buffer.cmd().offset(0).read(&mut res).enq()?;
-        println!("{:?}", res);
 
         Ok(())
     }
