@@ -8,3 +8,7 @@ edition = "2018"
 [dependencies]
 ocl = "0.19.3"
 nalgebra = "0.29.0"
+rand = "0.8.4"
+image = "0.23.14"
+ocl-include = "0.5.1"
+uni-path = "1.51.1"

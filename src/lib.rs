@@ -2,6 +2,7 @@ pub mod error;
 pub mod result;
 
 pub mod data;
+pub mod image;
 pub mod object;
 pub mod pack;
 pub mod render;
