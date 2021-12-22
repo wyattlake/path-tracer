@@ -5,25 +5,20 @@ use ocl_include::{source, Parser};
 use std::path;
 use uni_path;
 #[derive(Debug, Clone)]
+
+/// Contains raw render output for Post Processing
 pub struct RawImage<'a> {
     dims: (usize, usize),
     raw_buffer: &'a Buffer<f32>,
     passes: usize,
-    context: &'a Context,
 }
 
 impl<'a> RawImage<'a> {
-    pub fn new(
-        raw_buffer: &'a Buffer<f32>,
-        passes: usize,
-        dims: (usize, usize),
-        context: &'a Context,
-    ) -> Self {
+    pub fn new(raw_buffer: &'a Buffer<f32>, passes: usize, dims: (usize, usize)) -> Self {
         Self {
             raw_buffer,
             passes,
             dims,
-            context,
         }
     }
 
@@ -40,6 +35,7 @@ impl<'a> RawImage<'a> {
     }
 }
 
+/// Struct for manipulating raw images
 #[derive(Debug, Clone)]
 pub struct PostProcessor {
     mean_buffer: Buffer<f32>,
@@ -50,7 +46,7 @@ pub struct PostProcessor {
 }
 
 impl PostProcessor {
-    pub fn new(image: &RawImage) -> Result<PostProcessor> {
+    pub fn new(image: &RawImage, context: &Context) -> Result<PostProcessor> {
         let parser = Parser::builder()
             .add_source(
                 source::Fs::builder()
@@ -64,7 +60,7 @@ impl PostProcessor {
         let pro_que = ProQue::builder()
             .src(src)
             .dims(image.get_dims())
-            .context(image.context.clone())
+            .context(context.clone())
             .build()?;
 
         let mean_buffer = Buffer::<f32>::builder()
@@ -94,12 +90,14 @@ impl PostProcessor {
         Ok(processor)
     }
 
+    /// Averages MonteCarlo estimations and converts to rgb
     pub fn process_image(&mut self, image: &RawImage) -> Result<()> {
         self.build_mean(image)?;
         self.build_rgb()?;
         Ok(())
     }
 
+    /// Averages MonteCarlo estimations
     pub fn build_mean(&mut self, image: &RawImage) -> Result<()> {
         let mut kb = self.pro_que.kernel_builder("mean");
         kb.arg(prm::Int2::new(self.dims.0 as i32, self.dims.1 as i32));
@@ -119,6 +117,7 @@ impl PostProcessor {
         Ok(())
     }
 
+    /// Converts from float buffer to rgb
     pub fn build_rgb(&self) -> Result<()> {
         let mut kb = self.pro_que.kernel_builder("rgb");
         kb.arg(prm::Int2::new(self.dims.0 as i32, self.dims.1 as i32));
@@ -134,6 +133,7 @@ impl PostProcessor {
         Ok(())
     }
 
+    /// Saves rgb buffer to specified path
     pub fn save_image(&self, path: &path::Path) -> Result<()> {
         let mut buf = vec![0u8; self.rgb_buffer.len()];
         self.rgb_buffer.cmd().offset(0).read(&mut buf).enq()?;

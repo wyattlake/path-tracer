@@ -1,28 +1,69 @@
 use nalgebra::Matrix3;
 
+/// Allows struct data to be packed to a buffer and accessed in GPU kernels
 pub trait Pack {
-    fn pack_f32(&self, buffer_f32: &mut Vec<f32>);
-    fn pack_i32(&self, buffer_i32: &mut Vec<i32>);
+    /// Separates and packs discrete and non discrete data
+    fn pack(&self, buffer_f32: &mut Vec<f32>, buffer_u8: &mut Vec<u8>);
+}
+
+/// Builds a new struct and implements Pack.
+/// Includes getters and a constructor.
+#[macro_export]
+macro_rules! pack_struct {
+    (struct $name:ident {
+        pack_id: $pack_id:expr,
+        $($field_name:ident: $field_type:ty,)*
+    }) => {
+        #[derive(Debug, Clone)]
+        pub struct $name {
+            pack_id: u8,
+            $($field_name: $field_type,)*
+        }
+
+        impl $name {
+            pub fn new($($field_name: $field_type)*) -> $name {
+                $name {
+                    pack_id: $pack_id,
+                    $($field_name,)*
+                }
+            }
+
+            pub fn get_pack_id(&self) -> u8 {
+                return self.pack_id;
+            }
+
+            $(paste::item! {
+                pub fn [< get_$field_name >] (&self) -> &$field_type {
+                    return &self.$field_name;
+                }
+            })*
+        }
+
+        impl Pack for $name {
+            fn pack(&self, buffer_f32: &mut Vec<f32>, buffer_u8: &mut Vec<u8>) {
+                $pack_id.pack(buffer_f32, buffer_u8);
+                $(self.$field_name.pack(buffer_f32, buffer_u8);)*
+            }
+        }
+    };
+}
+
+impl Pack for u8 {
+    fn pack(&self, _buffer_f32: &mut Vec<f32>, buffer_u8: &mut Vec<u8>) {
+        buffer_u8.push(*self);
+    }
 }
 
 impl Pack for f32 {
-    fn pack_f32(&self, buffer_f32: &mut Vec<f32>) {
+    fn pack(&self, buffer_f32: &mut Vec<f32>, _buffer_u8: &mut Vec<u8>) {
         buffer_f32.push(*self);
-    }
-
-    fn pack_i32(&self, _buffer_i32: &mut Vec<i32>) {
-        unreachable!()
     }
 }
 
 impl<T: Pack> Pack for Matrix3<T> {
-    fn pack_f32(&self, buffer_f32: &mut Vec<f32>) {
+    fn pack(&self, buffer_f32: &mut Vec<f32>, buffer_u8: &mut Vec<u8>) {
         for x in self.as_slice() {
-            x.pack_f32(buffer_f32);
+            x.pack(buffer_f32, buffer_u8);
         }
-    }
-
-    fn pack_i32(&self, _buffer_i32: &mut Vec<i32>) {
-        unreachable!()
     }
 }

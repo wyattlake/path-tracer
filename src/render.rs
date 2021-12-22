@@ -1,11 +1,11 @@
-use image::{ImageBuffer, RgbImage};
-use ocl::{flags, prm, Buffer, ProQue};
+use ocl::{flags, prm, Buffer, Context, ProQue};
 use ocl_include::{source, Parser};
 
 use crate::{image::RawImage, DataBuffer, Result, Scene};
 use rand::{thread_rng, Rng};
 use uni_path::Path;
 
+/// Renders a Scene using OpenCL
 pub struct Renderer<'a> {
     dims: (usize, usize),
     passes: usize,
@@ -16,7 +16,8 @@ pub struct Renderer<'a> {
 }
 
 impl<'a> Renderer<'a> {
-    pub fn new(scene: &'a Scene, dims: (usize, usize)) -> Result<Renderer<'a>> {
+    /// Creates a new Renderer with OpenCL buffers
+    pub fn new(scene: &'a Scene, dims: (usize, usize), context: &Context) -> Result<Renderer<'a>> {
         let len = dims.0 * dims.1;
 
         let parser = Parser::builder()
@@ -30,7 +31,11 @@ impl<'a> Renderer<'a> {
         let node = parser.parse(Path::new("main.cl")).unwrap();
         let (src, _) = node.collect();
 
-        let pro_que = ProQue::builder().src(src).dims(dims).build()?;
+        let pro_que = ProQue::builder()
+            .context(context.clone())
+            .src(src)
+            .dims(dims)
+            .build()?;
 
         let color_buffer = Buffer::<f32>::builder()
             .queue(pro_que.queue().clone())
@@ -52,25 +57,27 @@ impl<'a> Renderer<'a> {
         random_buffer.cmd().offset(0).write(&seed).enq()?;
 
         Ok(Renderer {
-            dims: dims,
-            scene: scene,
+            dims,
+            scene,
             passes: 0,
-            color_buffer: color_buffer,
-            random_buffer: random_buffer,
-            pro_que: pro_que,
+            color_buffer,
+            random_buffer,
+            pro_que,
         })
     }
 
-    pub fn render(&mut self) -> Result<()> {
+    /// Renders lighting only from point lights
+    pub fn render_direct_lighting(&mut self) -> Result<()> {
         self.passes += 1;
 
         if self.scene.object_count == 0 {
             return Err("Scene with zero objects cannot be rendered".into());
         }
 
-        let mut kb = self.pro_que.kernel_builder("render");
+        let mut kb = self.pro_que.kernel_builder("render_direct_lighting");
 
-        let data = DataBuffer::new(self.scene, self.pro_que.queue())?;
+        // Packed scene data
+        let data = DataBuffer::new(&self.scene, self.pro_que.queue())?;
         kb.arg(prm::Int2::new(self.dims.0 as i32, self.dims.1 as i32));
         kb.arg(&self.color_buffer);
         kb.arg(&self.random_buffer);
@@ -82,26 +89,51 @@ impl<'a> Renderer<'a> {
             kernel.enq()?;
         }
 
-        let len = self.dims.0 * self.dims.1;
-        let mut res = vec![0f32; len * 3];
-        self.color_buffer.cmd().offset(0).read(&mut res).enq()?;
+        Ok(())
+    }
+
+    /// Renders lighting from surrounding objects using Monte Carlo integration
+    pub fn render_indirect_lighting(&mut self) -> Result<()> {
+        self.passes += 1;
+
+        if self.scene.object_count == 0 {
+            return Err("Scene with zero objects cannot be rendered".into());
+        }
+
+        let mut kb = self.pro_que.kernel_builder("render_indirect_lighting");
+
+        // Packed scene data
+        let data = DataBuffer::new(self.scene, self.pro_que.queue())?;
+        kb.arg(prm::Int2::new(self.dims.0 as i32, self.dims.1 as i32));
+        kb.arg(1);
+        kb.arg(&self.color_buffer);
+        data.add_args(&mut kb);
+
+        let kernel = kb.build()?;
+
+        unsafe {
+            kernel.enq()?;
+        }
 
         Ok(())
     }
 
-    pub fn render_passes(&mut self, passes: usize) -> Result<()> {
+    /// Repeatedly renders indirect lighting
+    pub fn render_indirect_passes(&mut self, passes: usize) -> Result<()> {
         for _ in 0..passes {
-            self.render()?;
+            self.render_indirect_lighting()?;
         }
         Ok(())
     }
 
+    /// Converts the color buffer to a RawImage for Post Processing
     pub fn raw_image(&self) -> RawImage<'_> {
-        RawImage::new(
-            &self.color_buffer,
-            self.passes,
-            self.dims,
-            self.pro_que.context(),
-        )
+        RawImage::new(&self.color_buffer, self.passes, self.dims)
+    }
+
+    /// Resets the color buffers
+    pub fn reset(&mut self) -> Result<()> {
+        self.color_buffer.cmd().offset(0).fill(0f32, None).enq()?;
+        Ok(())
     }
 }

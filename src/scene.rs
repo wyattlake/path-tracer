@@ -1,4 +1,4 @@
-use crate::{Object, Pack};
+use crate::Object;
 
 #[derive(Debug)]
 pub struct Scene<'a> {
@@ -18,18 +18,22 @@ impl<'a> Scene<'a> {
         self.objects.push(Box::new(object));
         self.object_count += 1;
     }
-}
 
-impl Pack for Scene<'_> {
-    fn pack_f32(&self, buffer_f32: &mut Vec<f32>) {
+    /// Packs scene to f32 and u8 buffers while storing object data lengths
+    pub fn pack_scene(
+        &self,
+        len_buffer: &mut Vec<u32>,
+        buffer_f32: &mut Vec<f32>,
+        buffer_u8: &mut Vec<u8>,
+    ) {
         for object in &self.objects {
-            object.pack_f32(buffer_f32);
-        }
-    }
+            let lens_before: (usize, usize) = (buffer_f32.len(), buffer_u8.len());
+            object.pack(buffer_f32, buffer_u8);
 
-    fn pack_i32(&self, buffer_i32: &mut Vec<i32>) {
-        for object in &self.objects {
-            object.pack_i32(buffer_i32);
+            len_buffer.append(&mut vec![
+                (buffer_f32.len() - lens_before.0) as u32,
+                (buffer_u8.len() - lens_before.1) as u32,
+            ]);
         }
     }
 }
