@@ -4,14 +4,14 @@ use crate::{Result, Scene};
 
 /// Encapsulates packed data and transfers data to buffers
 #[derive(Debug, Clone)]
-pub struct DataBuffer {
+pub struct SceneData {
     len_buffer: ocl::Buffer<u32>,
     buffer_u8: ocl::Buffer<u8>,
     buffer_f32: ocl::Buffer<f32>,
 }
 
-impl DataBuffer {
-    pub fn new(scene: &Scene, queue: &Queue) -> Result<DataBuffer> {
+impl SceneData {
+    pub fn new(scene: &Scene, queue: &Queue) -> Result<SceneData> {
         let mut len_vec = Vec::new();
         let mut vec_f32 = Vec::new();
         let mut vec_u8 = Vec::new();
@@ -42,7 +42,7 @@ impl DataBuffer {
         buffer_u8.cmd().offset(0).write(&vec_u8).enq()?;
         buffer_f32.cmd().offset(0).write(&vec_f32).enq()?;
 
-        let data = DataBuffer {
+        let data = SceneData {
             len_buffer,
             buffer_u8,
             buffer_f32,

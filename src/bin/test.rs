@@ -1,6 +1,7 @@
 use std::path::Path;
 
-use path_tracer::{image::PostProcessor, Context, Renderer, Result, Scene, Sphere};
+use nalgebra::{Rotation3, Vector3};
+use path_tracer::{image::PostProcessor, Camera, Context, Renderer, Result, Scene, Sphere};
 
 fn main() -> Result<()> {
     let context = Context::new()?;
@@ -9,7 +10,8 @@ fn main() -> Result<()> {
     let sphere = Sphere::default();
     scene.add_object(sphere);
 
-    let mut renderer = Renderer::new(&scene, (100, 100), context.get_context())?;
+    let camera = Camera::new(Vector3::new(0.0f32, 0.0f32, 0.0f32), Rotation3::identity());
+    let mut renderer = Renderer::new(&scene, &camera, (10, 10), context.get_context())?;
     renderer.render_direct_lighting()?;
 
     let path = Path::new("./output/image.png");

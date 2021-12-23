@@ -9,7 +9,7 @@ pub trait Pack {
 /// Builds a new struct and implements Pack.
 /// Includes getters and a constructor.
 #[macro_export]
-macro_rules! pack_struct {
+macro_rules! pack_object {
     (struct $name:ident {
         pack_id: $pack_id:expr,
         $($field_name:ident: $field_type:ty,)*
@@ -21,7 +21,7 @@ macro_rules! pack_struct {
         }
 
         impl $name {
-            pub fn new($($field_name: $field_type)*) -> $name {
+            pub fn new($($field_name: $field_type,)*) -> $name {
                 $name {
                     pack_id: $pack_id,
                     $($field_name,)*
@@ -48,6 +48,39 @@ macro_rules! pack_struct {
     };
 }
 
+/// Packs structs without an id
+#[macro_export]
+macro_rules! pack_struct {
+    (struct $name:ident {
+        $($field_name:ident: $field_type:ty,)*
+    }) => {
+        #[derive(Debug, Clone)]
+        pub struct $name {
+            $($field_name: $field_type,)*
+        }
+
+        impl $name {
+            pub fn new($($field_name: $field_type,)*) -> $name {
+                $name {
+                    $($field_name,)*
+                }
+            }
+
+            $(paste::item! {
+                pub fn [< get_$field_name >] (&self) -> &$field_type {
+                    return &self.$field_name;
+                }
+            })*
+        }
+
+        impl Pack for $name {
+            fn pack(&self, buffer_f32: &mut Vec<f32>, buffer_u8: &mut Vec<u8>) {
+                $(self.$field_name.pack(buffer_f32, buffer_u8);)*
+            }
+        }
+    };
+}
+
 impl Pack for u8 {
     fn pack(&self, _buffer_f32: &mut Vec<f32>, buffer_u8: &mut Vec<u8>) {
         buffer_u8.push(*self);
@@ -65,5 +98,11 @@ impl<T: Pack> Pack for Matrix3<T> {
         for x in self.as_slice() {
             x.pack(buffer_f32, buffer_u8);
         }
+    }
+}
+
+impl Pack for bool {
+    fn pack(&self, _buffer_f32: &mut Vec<f32>, buffer_u8: &mut Vec<u8>) {
+        buffer_u8.push(*self as u8);
     }
 }

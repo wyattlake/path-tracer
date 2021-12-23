@@ -1,7 +1,7 @@
 use ocl::{flags, prm, Buffer, Context, ProQue};
 use ocl_include::{source, Parser};
 
-use crate::{image::RawImage, DataBuffer, Result, Scene};
+use crate::{image::RawImage, Camera, Result, Scene, SceneData};
 use rand::{thread_rng, Rng};
 use uni_path::Path;
 
@@ -13,11 +13,17 @@ pub struct Renderer<'a> {
     random_buffer: Buffer<u32>,
     pro_que: ProQue,
     scene: &'a Scene<'a>,
+    camera: &'a Camera,
 }
 
 impl<'a> Renderer<'a> {
     /// Creates a new Renderer with OpenCL buffers
-    pub fn new(scene: &'a Scene, dims: (usize, usize), context: &Context) -> Result<Renderer<'a>> {
+    pub fn new(
+        scene: &'a Scene,
+        camera: &'a Camera,
+        dims: (usize, usize),
+        context: &Context,
+    ) -> Result<Renderer<'a>> {
         let len = dims.0 * dims.1;
 
         let parser = Parser::builder()
@@ -30,6 +36,7 @@ impl<'a> Renderer<'a> {
             .build();
         let node = parser.parse(Path::new("main.cl")).unwrap();
         let (src, _) = node.collect();
+        println!("{}", src);
 
         let pro_que = ProQue::builder()
             .context(context.clone())
@@ -62,6 +69,7 @@ impl<'a> Renderer<'a> {
             passes: 0,
             color_buffer,
             random_buffer,
+            camera,
             pro_que,
         })
     }
@@ -77,11 +85,13 @@ impl<'a> Renderer<'a> {
         let mut kb = self.pro_que.kernel_builder("render_direct_lighting");
 
         // Packed scene data
-        let data = DataBuffer::new(&self.scene, self.pro_que.queue())?;
+        let data = SceneData::new(&self.scene, self.pro_que.queue())?;
         kb.arg(prm::Int2::new(self.dims.0 as i32, self.dims.1 as i32));
         kb.arg(&self.color_buffer);
         kb.arg(&self.random_buffer);
+
         data.add_args(&mut kb);
+        self.camera.add_args(&mut kb);
 
         let kernel = kb.build()?;
 
@@ -103,11 +113,13 @@ impl<'a> Renderer<'a> {
         let mut kb = self.pro_que.kernel_builder("render_indirect_lighting");
 
         // Packed scene data
-        let data = DataBuffer::new(self.scene, self.pro_que.queue())?;
+        let data = SceneData::new(self.scene, self.pro_que.queue())?;
         kb.arg(prm::Int2::new(self.dims.0 as i32, self.dims.1 as i32));
         kb.arg(1);
         kb.arg(&self.color_buffer);
+
         data.add_args(&mut kb);
+        self.camera.add_args(&mut kb);
 
         let kernel = kb.build()?;
 
