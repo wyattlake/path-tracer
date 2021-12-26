@@ -11,25 +11,25 @@ pub trait Pack {
 #[macro_export]
 macro_rules! pack_object {
     (struct $name:ident {
-        pack_id: $pack_id:expr,
+        object_id: $object_id:expr,
         $($field_name:ident: $field_type:ty,)*
     }) => {
         #[derive(Debug, Clone)]
         pub struct $name {
-            pack_id: u8,
+            object_id: u8,
             $($field_name: $field_type,)*
         }
 
         impl $name {
             pub fn new($($field_name: $field_type,)*) -> $name {
                 $name {
-                    pack_id: $pack_id,
+                    object_id: $object_id,
                     $($field_name,)*
                 }
             }
 
-            pub fn get_pack_id(&self) -> u8 {
-                return self.pack_id;
+            pub fn get_object_id(&self) -> u8 {
+                return self.object_id;
             }
 
             $(paste::item! {
@@ -41,7 +41,7 @@ macro_rules! pack_object {
 
         impl Pack for $name {
             fn pack(&self, buffer_f32: &mut Vec<f32>, buffer_u8: &mut Vec<u8>) {
-                $pack_id.pack(buffer_f32, buffer_u8);
+                $object_id.pack(buffer_f32, buffer_u8);
                 $(self.$field_name.pack(buffer_f32, buffer_u8);)*
             }
         }

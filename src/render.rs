@@ -6,6 +6,7 @@ use rand::{thread_rng, Rng};
 use uni_path::Path;
 
 /// Renders a Scene using OpenCL
+#[derive(Debug, Clone)]
 pub struct Renderer<'a> {
     dims: (usize, usize),
     passes: usize,
@@ -36,7 +37,6 @@ impl<'a> Renderer<'a> {
             .build();
         let node = parser.parse(Path::new("main.cl")).unwrap();
         let (src, _) = node.collect();
-        println!("{}", src);
 
         let pro_que = ProQue::builder()
             .context(context.clone())

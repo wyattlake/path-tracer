@@ -10,8 +10,8 @@ fn main() -> Result<()> {
     let sphere = Sphere::default();
     scene.add_object(sphere);
 
-    let camera = Camera::new(Vector3::new(0.0f32, 0.0f32, 0.0f32), Rotation3::identity());
-    let mut renderer = Renderer::new(&scene, &camera, (10, 10), context.get_context())?;
+    let camera = Camera::new(Vector3::new(0.0f32, 0.0f32, 2.5f32), Rotation3::identity());
+    let mut renderer = Renderer::new(&scene, &camera, (1000, 1000), context.get_context())?;
     renderer.render_direct_lighting()?;
 
     let path = Path::new("./output/image.png");

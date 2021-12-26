@@ -1,3 +1,5 @@
+
+
 #pragma once
 
 #include "ray.cl"
@@ -9,7 +11,7 @@
 float2 pos_to_screen(int2 pos, int2 size) {
     float2 shifted_pos = convert_float2(pos) - 0.5f * convert_float2(size);
     shifted_pos.y = -shifted_pos.y;
-    return shifted_pos;
+    return shifted_pos / (float)size.y;
 }
 
 // Builds a ray from the camera and worker position

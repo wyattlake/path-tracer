@@ -7,7 +7,7 @@ use super::Object;
 // Sphere object which can be added to scenes
 pack_object! {
     struct Sphere {
-        pack_id: 0,
+        object_id: 0,
         transform: Transform,
         invisible: bool,
     }

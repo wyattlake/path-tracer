@@ -2,6 +2,7 @@ use nalgebra::{Rotation3, Vector3};
 use ocl::{builders::KernelBuilder, prm};
 
 // Basic pinhole camera
+#[derive(Debug, Clone)]
 pub struct Camera {
     pos: Vector3<f32>,
     ori: Rotation3<f32>,
