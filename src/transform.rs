@@ -9,6 +9,10 @@ impl Transform {
     pub fn new(matrix: Matrix3<f32>) -> Transform {
         Transform(matrix)
     }
+
+    pub fn mult(&mut self, matrix: Matrix3<f32>) {
+        self.0 = matrix * self.0;
+    }
 }
 
 impl Pack for Transform {

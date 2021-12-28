@@ -2,11 +2,11 @@
 
 // Basic Ray struct, contains an origin and direction
 typedef struct {
-    float3 origin;
-    float3 direction;
+    float4 origin;
+    float4 direction;
 } Ray;
 
-Ray ray_new(float3 origin, float3 direction) {
+Ray ray_new(float4 origin, float4 direction) {
     Ray ray = {
         .origin = origin,
         .direction = direction,
@@ -14,4 +14,4 @@ Ray ray_new(float3 origin, float3 direction) {
     return ray;
 }
 
-Ray ray_default() { return ray_new((float3)(0.0f), (float3)(0.0f)); }
+Ray ray_default() { return ray_new((float4)(0.0f), (float4)(0.0f)); }

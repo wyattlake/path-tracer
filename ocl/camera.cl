@@ -17,9 +17,12 @@ float2 pos_to_screen(int2 pos, int2 size) {
 // Builds a ray from the camera and worker position
 Ray camera_ray(int2 pos, int2 size, CAMERA_ARGS_DEF) {
     float2 screen_point = pos_to_screen(pos, size);
-    float3 direction = normalize(screen_point.x * camera_map.s012 +
-                                 screen_point.y * camera_map.s456 -
-                                 1.0f / fov * camera_map.s89a);
-    Ray ray = ray_new(camera_pos, direction);
+    float4 origin = (float4)(camera_pos.x, camera_pos.y, camera_pos.z, 1.0f);
+    float3 raw_direction = normalize(screen_point.x * camera_map.s012 +
+                                     screen_point.y * camera_map.s456 -
+                                     1.0f / fov * camera_map.s89a);
+    float4 direction =
+        (float4)(raw_direction.x, raw_direction.y, raw_direction.z, 0.0f);
+    Ray ray = ray_new(origin, direction);
     return ray;
 }

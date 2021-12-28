@@ -17,6 +17,10 @@ impl Sphere {
     pub fn default() -> Sphere {
         Sphere::new(Transform::new(Matrix3::identity()), false)
     }
+
+    pub fn get_transform_mut(&mut self) -> &mut Transform {
+        return &mut self.transform;
+    }
 }
 
 impl Object for Sphere {}
