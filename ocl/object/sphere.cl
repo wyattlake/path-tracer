@@ -1,8 +1,9 @@
 #pragma once
 
 #include "object.cl"
+#include "args.cl"
 
-inline bool sphere_hit(Ray ray, OBJECT_ARGS_DEF) {
+inline float* sphere_hit(float *hit_times, Ray ray, OBJECT_ARGS_DEF) {
     float4 sphere_to_ray =
         (float4)(ray.origin.x, ray.origin.y, ray.origin.z, 0.0);
     float a = dot(ray.direction, ray.direction);
@@ -11,10 +12,15 @@ inline bool sphere_hit(Ray ray, OBJECT_ARGS_DEF) {
 
     float discriminant = b * b - 4 * a * c;
     if (discriminant < 0) {
-        return false;
+        return 0L;
     }
 
-    float t1 = ((-1 * b) - sqrt(discriminant)) / (2 * a);
-    float t2 = ((-1 * b) + sqrt(discriminant)) / (2 * a);
-    return (t1 > 0);
+    hit_times[0] = (-b - sqrt(discriminant)) / (2 * a);
+    hit_times[1] = (-b + sqrt(discriminant)) / (2 * a);
+
+    if (hit_times[0] > 0) {
+        return hit_times;
+    } else {
+        return 0L;
+    }
 }

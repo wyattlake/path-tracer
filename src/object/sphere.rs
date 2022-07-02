@@ -1,5 +1,3 @@
-use nalgebra::Matrix3;
-
 use crate::{pack_object, Pack, Transform};
 
 use super::Object;
@@ -15,7 +13,7 @@ pack_object! {
 
 impl Sphere {
     pub fn default() -> Sphere {
-        Sphere::new(Transform::new(Matrix3::identity()), false)
+        Sphere::new(Transform::identity(), false)
     }
 
     pub fn get_transform_mut(&mut self) -> &mut Transform {

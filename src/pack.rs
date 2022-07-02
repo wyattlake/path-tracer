@@ -1,4 +1,4 @@
-use nalgebra::Matrix3;
+use nalgebra::{Matrix4, Scalar};
 
 /// Allows struct data to be packed to a buffer and accessed in GPU kernels
 pub trait Pack {
@@ -93,9 +93,10 @@ impl Pack for f32 {
     }
 }
 
-impl<T: Pack> Pack for Matrix3<T> {
+impl<T: Pack + Scalar> Pack for Matrix4<T> {
     fn pack(&self, buffer_f32: &mut Vec<f32>, buffer_u8: &mut Vec<u8>) {
-        for x in self.as_slice() {
+        // Matrix is transposed because as_slice reads row by row
+        for x in self.transpose().as_slice() {
             x.pack(buffer_f32, buffer_u8);
         }
     }

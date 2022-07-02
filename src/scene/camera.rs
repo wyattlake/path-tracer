@@ -11,11 +11,7 @@ pub struct Camera {
 
 impl Camera {
     pub fn new(pos: Vector3<f32>, ori: Rotation3<f32>) -> Camera {
-        Camera {
-            pos,
-            ori,
-            fov: 1.0f32,
-        }
+        Camera { pos, ori, fov: 0.7 }
     }
 
     pub fn default() -> Camera {
