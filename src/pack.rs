@@ -12,24 +12,26 @@ pub trait Pack {
 macro_rules! pack_object {
     (struct $name:ident {
         object_id: $object_id:expr,
+        transform: Transform,
+        material: Material,
         $($field_name:ident: $field_type:ty,)*
     }) => {
         #[derive(Debug, Clone)]
         pub struct $name {
             object_id: u8,
+            transform: Transform,
+            material: Material,
             $($field_name: $field_type,)*
         }
 
         impl $name {
-            pub fn new($($field_name: $field_type,)*) -> $name {
+            pub fn new(transform: Transform, material: Material, $($field_name: $field_type,)*) -> $name {
                 $name {
                     object_id: $object_id,
+                    transform,
+                    material,
                     $($field_name,)*
                 }
-            }
-
-            pub fn get_object_id(&self) -> u8 {
-                return self.object_id;
             }
 
             $(paste::item! {
@@ -37,11 +39,39 @@ macro_rules! pack_object {
                     return &self.$field_name;
                 }
             })*
+
+            $(paste::item! {
+                pub fn [< set_$field_name >] (&mut self, $field_name: $field_type) {
+                    self.$field_name = $field_name;
+                }
+            })*
+        }
+
+        impl Object for $name {
+            fn get_object_id(&self) -> u8 {
+                return self.object_id;
+            }
+
+            fn get_transform(&self) -> &Transform {
+                &self.transform
+            }
+            fn set_transform(&mut self, transform: Transform) {
+                self.transform = transform;
+            }
+
+            fn get_material(&self) -> &Material {
+                &self.material
+            }
+            fn set_material(&mut self, material: Material) {
+                self.material = material;
+            }
         }
 
         impl Pack for $name {
             fn pack(&self, buffer_f32: &mut Vec<f32>, buffer_u8: &mut Vec<u8>) {
                 $object_id.pack(buffer_f32, buffer_u8);
+                self.transform.pack(buffer_f32, buffer_u8);
+                self.material.pack(buffer_f32, buffer_u8);
                 $(self.$field_name.pack(buffer_f32, buffer_u8);)*
             }
         }
@@ -71,6 +101,12 @@ macro_rules! pack_struct {
                     return &self.$field_name;
                 }
             })*
+
+            $(paste::item! {
+                pub fn [< set_$field_name >] (&mut self, $field_name: $field_type) {
+                    self.$field_name = $field_name;
+                }
+            })*
         }
 
         impl Pack for $name {
@@ -90,6 +126,14 @@ impl Pack for u8 {
 impl Pack for f32 {
     fn pack(&self, buffer_f32: &mut Vec<f32>, _buffer_u8: &mut Vec<u8>) {
         buffer_f32.push(*self);
+    }
+}
+
+impl Pack for (f32, f32, f32) {
+    fn pack(&self, buffer_f32: &mut Vec<f32>, _buffer_u8: &mut Vec<u8>) {
+        buffer_f32.push(self.0);
+        buffer_f32.push(self.1);
+        buffer_f32.push(self.2);
     }
 }
 

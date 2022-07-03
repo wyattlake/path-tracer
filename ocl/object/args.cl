@@ -1,7 +1,7 @@
 #pragma once
 
 #define OBJECT_ARGS_DEF                                                        \
-    uint int_len, uint float_len, __global const unsigned short *int_buffer,   \
+    uint byte_len, uint float_len, __global const unsigned char *byte_buffer, \
         __global const float *float_buffer
 
-#define OBJECT_ARGS int_len, float_len, int_buffer, float_buffer
+#define OBJECT_ARGS byte_len, float_len, byte_buffer, float_buffer

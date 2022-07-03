@@ -2,7 +2,7 @@ use std::path::Path;
 
 use nalgebra::{Rotation3, Vector3};
 use path_tracer::{
-    image::PostProcessor, Camera, Context, Renderer, Result, Scene, Sphere, Transform,
+    image::PostProcessor, Camera, Context, Material, Renderer, Result, Scene, Sphere, Transform,
 };
 use std::time::Instant;
 
@@ -12,24 +12,14 @@ fn main() -> Result<()> {
     let mut scene = Scene::new();
     let sphere = Sphere::new(
         Transform::new(
-            Vector3::new(-1.0, 0.0, 0.0),
+            Vector3::new(0.0, 0.0, 0.0),
             Vector3::new(0.0, 0.0, 0.0),
             Vector3::new(1.0, 1.0, 1.0),
         ),
-        false,
-    );
-
-    let sphere2 = Sphere::new(
-        Transform::new(
-            Vector3::new(1.0, 0.0, 0.0),
-            Vector3::new(0.0, 0.0, 0.0),
-            Vector3::new(1.0, 1.0, 1.0),
-        ),
-        false,
+        Material::new((1.0, 0.0, 0.0), (0.0, 0.0, 0.0), 0.1, 0.9, 0.9, false),
     );
 
     scene.add_object(sphere);
-    scene.add_object(sphere2);
 
     let camera = Camera::new(
         Vector3::new(0.0f32, 0.0f32, 5f32),

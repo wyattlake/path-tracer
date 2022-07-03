@@ -18,6 +18,14 @@ impl Transform {
         }
     }
 
+    pub fn pos(pos: Vector3<f32>) -> Transform {
+        Transform {
+            pos,
+            ori: Vector3::new(0.0, 0.0, 0.0),
+            scale: Vector3::new(0.0, 0.0, 0.0),
+        }
+    }
+
     pub fn identity() -> Transform {
         Transform::new(
             Vector3::new(0.0f32, 0.0f32, 0.0f32),
