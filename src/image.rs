@@ -1,6 +1,6 @@
-use crate::Result;
+use crate::{Context, Result};
 use image::ColorType;
-use ocl::{flags, prm, Buffer, Context, ProQue};
+use ocl::{flags, prm, Buffer, Program};
 use ocl_include::{source, Parser};
 use std::path;
 use uni_path;
@@ -40,7 +40,8 @@ impl<'a> RawImage<'a> {
 pub struct PostProcessor {
     mean_buffer: Buffer<f32>,
     rgb_buffer: Buffer<u8>,
-    pro_que: ProQue,
+    program: Program,
+    context: Context,
     passes: usize,
     dims: (usize, usize),
 }
@@ -57,21 +58,21 @@ impl PostProcessor {
             .build();
         let node = parser.parse(uni_path::Path::new("processor.cl")).unwrap();
         let (src, _) = node.collect();
-        let pro_que = ProQue::builder()
-            .src(src)
-            .dims(image.get_dims())
-            .context(context.clone())
-            .build()?;
+
+        let program = Program::builder()
+            .devices(context.get_device())
+            .source(src)
+            .build(context.get_context())?;
 
         let mean_buffer = Buffer::<f32>::builder()
-            .queue(pro_que.queue().clone())
+            .queue(context.get_queue().clone())
             .flags(flags::MEM_READ_WRITE)
             .len(image.len())
             .fill_val(0f32)
             .build()?;
 
         let rgb_buffer = Buffer::<u8>::builder()
-            .queue(pro_que.queue().clone())
+            .queue(context.get_queue().clone())
             .flags(flags::MEM_READ_WRITE)
             .len(image.len())
             .fill_val(0u8)
@@ -80,7 +81,8 @@ impl PostProcessor {
         let mut processor = PostProcessor {
             mean_buffer,
             rgb_buffer,
-            pro_que,
+            program,
+            context: context.clone(),
             passes: 0,
             dims: image.get_dims(),
         };
@@ -99,7 +101,11 @@ impl PostProcessor {
 
     /// Averages MonteCarlo estimations
     pub fn build_mean(&mut self, image: &RawImage) -> Result<()> {
-        let mut kb = self.pro_que.kernel_builder("mean");
+        let queue = self.context.get_queue().clone();
+
+        let mut kb = ocl::Kernel::builder();
+        kb.program(&self.program).name("mean").queue(queue.clone());
+
         kb.arg(prm::Int2::new(self.dims.0 as i32, self.dims.1 as i32));
         kb.arg(self.passes);
         kb.arg(image.get_passes());
@@ -109,8 +115,10 @@ impl PostProcessor {
         let kernel = kb.build()?;
 
         unsafe {
-            kernel.enq()?;
+            kernel.cmd().global_work_size(self.dims).enq()?;
         }
+
+        self.context.get_queue().finish()?;
 
         self.passes += image.get_passes();
 
@@ -119,7 +127,11 @@ impl PostProcessor {
 
     /// Converts from float buffer to rgb
     pub fn build_rgb(&self) -> Result<()> {
-        let mut kb = self.pro_que.kernel_builder("rgb");
+        let queue = self.context.get_queue().clone();
+
+        let mut kb = ocl::Kernel::builder();
+        kb.program(&self.program).name("rgb").queue(queue.clone());
+
         kb.arg(prm::Int2::new(self.dims.0 as i32, self.dims.1 as i32));
         kb.arg(&self.mean_buffer);
         kb.arg(&self.rgb_buffer);
@@ -127,8 +139,10 @@ impl PostProcessor {
         let kernel = kb.build()?;
 
         unsafe {
-            kernel.enq()?;
+            kernel.cmd().global_work_size(self.dims).enq()?;
         }
+
+        self.context.get_queue().finish()?;
 
         Ok(())
     }

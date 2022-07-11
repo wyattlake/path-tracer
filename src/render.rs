@@ -1,7 +1,7 @@
-use ocl::{flags, prm, Buffer, Context, ProQue};
+use ocl::{flags, prm, Buffer, Program};
 use ocl_include::{source, Parser};
 
-use crate::{image::RawImage, Camera, Result, Scene, SceneData};
+use crate::{image::RawImage, Camera, Context, Result, Scene, SceneData};
 use rand::{thread_rng, Rng};
 use uni_path::Path;
 
@@ -12,7 +12,8 @@ pub struct Renderer<'a> {
     passes: usize,
     color_buffer: Buffer<f32>,
     random_buffer: Buffer<u32>,
-    pro_que: ProQue,
+    context: Context,
+    program: Program,
     scene: &'a Scene<'a>,
     camera: &'a Camera,
 }
@@ -38,21 +39,20 @@ impl<'a> Renderer<'a> {
         let node = parser.parse(Path::new("main.cl")).unwrap();
         let (src, _) = node.collect();
 
-        let pro_que = ProQue::builder()
-            .context(context.clone())
-            .src(src)
-            .dims(dims)
-            .build()?;
+        let program = Program::builder()
+            .devices(context.get_device())
+            .source(src)
+            .build(context.get_context())?;
 
         let color_buffer = Buffer::<f32>::builder()
-            .queue(pro_que.queue().clone())
+            .queue(context.get_queue().clone())
             .flags(flags::MEM_READ_WRITE)
             .len(3 * len)
             .fill_val(0f32)
             .build()?;
 
         let random_buffer = Buffer::<u32>::builder()
-            .queue(pro_que.queue().clone())
+            .queue(context.get_queue().clone())
             .flags(flags::MEM_READ_ONLY)
             .len(len)
             .fill_val(0u32)
@@ -70,7 +70,8 @@ impl<'a> Renderer<'a> {
             color_buffer,
             random_buffer,
             camera,
-            pro_que,
+            program,
+            context: context.clone(),
         })
     }
 
@@ -82,10 +83,16 @@ impl<'a> Renderer<'a> {
             return Err("Scene with zero objects cannot be rendered".into());
         }
 
-        let mut kb = self.pro_que.kernel_builder("render_direct_lighting");
+        let queue = self.context.get_queue().clone();
+
+        let mut kb = ocl::Kernel::builder();
+        kb.program(&self.program)
+            .name("render_direct_lighting")
+            .queue(queue.clone());
 
         // Packed scene data
-        let data = SceneData::new(&self.scene, self.pro_que.queue())?;
+        let data = SceneData::new(&self.scene, self.context.get_queue())?;
+
         kb.arg(prm::Int2::new(self.dims.0 as i32, self.dims.1 as i32));
         kb.arg(&self.color_buffer);
         kb.arg(&self.random_buffer);
@@ -96,8 +103,10 @@ impl<'a> Renderer<'a> {
         let kernel = kb.build()?;
 
         unsafe {
-            kernel.enq()?;
+            kernel.cmd().global_work_size(self.dims).enq()?;
         }
+
+        self.context.get_queue().finish()?;
 
         Ok(())
     }
@@ -110,12 +119,16 @@ impl<'a> Renderer<'a> {
             return Err("Scene with zero objects cannot be rendered".into());
         }
 
-        let mut kb = self.pro_que.kernel_builder("render_indirect_lighting");
+        let queue = self.context.get_queue().clone();
+
+        let mut kb = ocl::Kernel::builder();
+        kb.program(&self.program)
+            .name("render_indirect_lighting")
+            .queue(queue.clone());
 
         // Packed scene data
-        let data = SceneData::new(self.scene, self.pro_que.queue())?;
+        let data = SceneData::new(self.scene, self.context.get_queue())?;
         kb.arg(prm::Int2::new(self.dims.0 as i32, self.dims.1 as i32));
-        kb.arg(1);
         kb.arg(&self.color_buffer);
 
         data.add_args(&mut kb);
@@ -124,8 +137,10 @@ impl<'a> Renderer<'a> {
         let kernel = kb.build()?;
 
         unsafe {
-            kernel.enq()?;
+            kernel.cmd().global_work_size(self.dims).enq()?;
         }
+
+        self.context.get_queue().finish()?;
 
         Ok(())
     }

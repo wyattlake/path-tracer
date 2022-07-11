@@ -10,22 +10,16 @@ fn main() -> Result<()> {
     let context = Context::new()?;
 
     let mut scene = Scene::new();
-    let sphere = Sphere::new(
-        Transform::new(
-            Vector3::new(0.0, 0.0, 0.0),
-            Vector3::new(0.0, 0.0, 0.0),
-            Vector3::new(1.0, 1.0, 1.0),
-        ),
-        Material::new((1.0, 0.0, 0.0), (0.0, 0.0, 0.0), 0.1, 0.9, 0.9, false),
-    );
 
-    scene.add_object(sphere);
+    let s = Sphere::new(Transform::identity(), Material::from_color((1.0, 0.0, 0.0)));
+    scene.add_object(s);
 
     let camera = Camera::new(
         Vector3::new(0.0f32, 0.0f32, 5f32),
         Rotation3::from_euler_angles(0.0f32, 0.0f32, 0.0f32),
     );
-    let mut renderer = Renderer::new(&scene, &camera, (750, 750), context.get_context())?;
+
+    let mut renderer = Renderer::new(&scene, &camera, (1000, 1000), &context)?;
 
     println!("Render started...");
     let now = Instant::now();
@@ -40,7 +34,7 @@ fn main() -> Result<()> {
 
     let path = Path::new("./output/image.png");
     let raw_image = renderer.raw_image();
-    let processor = PostProcessor::new(&raw_image, context.get_context())?;
+    let processor = PostProcessor::new(&raw_image, &context)?;
     println!("Saving image...");
     processor.save_image(path)?;
     println!("Image saved.");

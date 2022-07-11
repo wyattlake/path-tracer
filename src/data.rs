@@ -16,10 +16,6 @@ impl SceneData {
         let mut vec_f32 = Vec::new();
         let mut vec_u8 = Vec::new();
         scene.pack_scene(&mut len_vec, &mut vec_f32, &mut vec_u8);
-        println!(
-            "len_vec: {:?}\nvec_f32: {:?}\nvec_u8: {:?}",
-            len_vec, vec_f32, vec_u8,
-        );
 
         let len_buffer = Buffer::<u32>::builder()
             .queue(queue.clone())

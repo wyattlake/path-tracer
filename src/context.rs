@@ -1,12 +1,14 @@
-use ocl::{Device, Platform};
+use ocl::{Device, Platform, Queue};
 
 use crate::Result;
 
 /// Stores OpenCl Context, Platform, and Device
+#[derive(Debug, Clone)]
 pub struct Context {
     context: ocl::Context,
     platform: Platform,
     device: Device,
+    queue: Queue,
 }
 
 impl Context {
@@ -17,10 +19,14 @@ impl Context {
             .platform(platform)
             .devices(device.clone())
             .build()?;
+
+        let queue = ocl::Queue::new(&context, device, None)?;
+
         Ok(Context {
             context,
             platform,
             device,
+            queue,
         })
     }
 
@@ -34,5 +40,9 @@ impl Context {
 
     pub fn get_platform(&self) -> &ocl::Platform {
         &self.platform
+    }
+
+    pub fn get_queue(&self) -> &ocl::Queue {
+        &self.queue
     }
 }
